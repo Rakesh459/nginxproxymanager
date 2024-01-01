@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginxproxymanager
+spec:
+  selector:
+    matchLabels:
+      app: nginxproxymanager
+  template:
+    metadata:
+      labels:
+        app: nginxproxymanager
+    spec:
+      containers:
+      - name: nginxproxymanager
+        image: jc21/nginx-proxy-manager:latest
+        ports:
+        - name: webport
+          containerPort: 81
+        - name: http
+          containerPort: 80
+        - name: https
+          containerPort: 443
+        volumeMounts:
+        - name: nginxproxymanager-pvc
+          mountPath: /data
+        - name: nginxproxymanager-pvc
+          mountPath: /etc/letsencrypt
+      volumes: 
+        - name: nginxproxymanager-pvc
+          persistentVolumeClaim: 
+            claimName: nginxproxymanager-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginxproxymanagersvc
+spec:
+  selector:
+    app: nginxproxymanager
+  ports:
+  - name: webport
+    port: 2024
+    targetPort: 81
+  - name: http
+    port: 80
+    targetPort: 80
+  - name: https
+    port: 443
+    targetPort: 443
+  type: LoadBalancer  
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nginxproxymanager-storage-class
+provisioner: docker.io/hostpath
+volumeBindingMode: Immediate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginxproxymanager-pvc
+  labels:
+    app: nginxproxymanager-pvc
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests: 
+      storage: 5Gi
+  storageClassName: nginxproxymanager-storage-class
